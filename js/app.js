@@ -13,6 +13,7 @@ var showQuestion = function(question) {
 	// set the date asked property in result
 	var asked = result.find('.asked-date');
 	var date = new Date(1000*question.creation_date);
+
 	asked.text(date.toString());
 
 	// set the .viewed for question property in result
@@ -21,6 +22,7 @@ var showQuestion = function(question) {
 
 	// set some properties related to asker
 	var asker = result.find('.asker');
+	
 	asker.html('<p>Name: <a target="_blank" '+
 		'href=http://stackoverflow.com/users/' + question.owner.user_id + ' >' +
 		question.owner.display_name +
@@ -65,12 +67,14 @@ var getUnanswered = function(tags) {
 		type: "GET",
 	})
 	.done(function(result){ //this waits for the ajax to return with a succesful promise object
+		
 		var searchResults = showSearchResults(request.tagged, result.items.length);
 
 		$('.search-results').html(searchResults);
 		//$.each is a higher order function. It takes an array and a function as an argument.
 		//The function is executed once for each item in the array.
 		$.each(result.items, function(i, item) {
+			//console.dir(item);
 			var question = showQuestion(item);
 			$('.results').append(question);
 		});
@@ -81,6 +85,66 @@ var getUnanswered = function(tags) {
 	});
 };
 
+//////////// GET TOP ANSWERS
+
+
+var showTopAnswers = function(item) {
+	
+	// clone our result template code
+	var result = $('.templates .top-answers').clone();
+	
+	var userLink = result.find('.user-image a');
+	userLink.attr('href', item.user.link);
+	
+	var userImage = result.find('.user-link img');
+	userImage.attr('src', item.user.profile_image);
+
+	var userNameElem = result.find('.user-name');
+	userNameElem.text(item.user.display_name);
+
+	var userRepElem = result.find('.user-reputation');
+	userRepElem.text(item.user.reputation);
+
+	var userScoreElem = result.find('.user-score');
+	userScoreElem.html('<p>' + item.user.reputation + '</p>');
+
+	return result;
+	
+};
+
+var getAnswerers = function(answerers) {
+	
+	var request = {
+		tagged: answerers,
+		site: 'stackoverflow',
+		filter: 'default'
+	}
+	
+	$.ajax({
+		url: 'http://api.stackexchange.com/2.2/tags/'+request.tagged.answerers+'/top-answerers/all_time',
+		data: request,
+		dataType: 'jsonp',
+		type: 'GET'
+	})
+	.done(function(result) {
+		
+		var searchResults = showSearchResults(request.tagged, result.items.length);
+		
+		$('.search-results').html(searchResults);
+		
+		$.each(result.items, function(i, item) {
+			var topAnswers = showTopAnswers(item);
+			$('.results').append(topAnswers);
+		})
+	})
+	.fail(function(jqXHR, error) {
+		
+		var errorElem = showError(error);
+		$('.search-results').append(errorElem);
+	})
+	
+}
+
 
 $(document).ready( function() {
 	$('.unanswered-getter').submit( function(e){
@@ -89,6 +153,18 @@ $(document).ready( function() {
 		$('.results').html('');
 		// get the value of the tags the user submitted
 		var tags = $(this).find("input[name='tags']").val();
+		
 		getUnanswered(tags);
 	});
+	
+	$('.inspiration-getter').submit( function(event) {
+		event.preventDefault();
+		// zero out results is previous search has run
+		$('.results').html('');
+		// get the value of the answerers the user submitted
+		var answerers = $(this).find('input[name="answerers"]').val();
+		
+		getAnswerers(answerers);
+	})
+	
 });
